@@ -27,4 +27,9 @@ export async function registerUser(data: RegisterDto) {
   return response.data;
 }
 
+export async function getApiStatus() {
+  const response = await api.get("/");
+  return response.data as string;
+}
+
 export default api;
