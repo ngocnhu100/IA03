@@ -30,6 +30,29 @@ In pgAdmin, create a new Server:
   - Username: `postgres`
   - Password: `password`
 
+### (Optional) Create schema and seed sample data via SQL
+
+We included SQL files to create the `users` table and seed a few example users.
+
+PowerShell (Windows) with local Docker Postgres running:
+
+```powershell
+# Create schema (users table, unique index)
+psql "postgresql://postgres:password@localhost:5432/user_registration" -f \
+  ".\user-registration-api\sql\01_create_schema.sql"
+
+# Seed sample users (alice@example.com / Password123!, bob@example.com / Password123!)
+psql "postgresql://postgres:password@localhost:5432/user_registration" -f \
+  ".\user-registration-api\sql\02_seed_sample_data.sql"
+```
+
+On Render (Managed PostgreSQL): open the DB shell and paste the contents of each file, or run `\i` with a path accessible to the shell.
+
+Notes:
+
+- Scripts are idempotent (safe to run multiple times).\
+- Passwords are hashed server‑side using `crypt(..., gen_salt('bf'))` (bcrypt‑compatible).
+
 ## 2) Run the backend (NestJS)
 
 ```powershell
@@ -105,13 +128,9 @@ Prerequisites:
 - `NODE_ENV=production`
 - `PORT=10000` (Render sets `PORT`, but declaring won’t hurt)
 - Database (choose one):
-  - Use Render’s Managed PostgreSQL and copy credentials, or
-  - Use Neon/ElephantSQL. Set:
-  - `DB_HOST`
-  - `DB_PORT`
-  - `DB_USERNAME`
-  - `DB_PASSWORD`
-  - `DB_DATABASE`
+  - Preferred: `DATABASE_URL` (copy the DB “Internal Database URL” if API and DB are in the same region; normalize to start with `postgres://` if needed)
+  - Or discrete vars: `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
+  - First deploy only (no migrations): `DB_SYNCHRONIZE=true` (remove after tables are created)
 
 5. Click “Create Web Service”. Wait for deploy to finish. You’ll get a URL like:
 
@@ -134,9 +153,12 @@ Keep this URL; you’ll use it as the frontend API base.
 
 #### 3) Set CORS on the API
 
-In Render, add/update the env var on the API service:
+In Render, add/update the env var(s) on the API service:
 
-- `FRONTEND_URL=https://your-frontend.vercel.app`
+- Single origin: `FRONTEND_URL=https://your-frontend.vercel.app`
+- Multiple origins: `FRONTEND_URLS=https://your-frontend.vercel.app,https://your-preview.vercel.app`
+
+Trailing slashes are normalized automatically.
 
 Redeploy the API (or click “Manual Deploy → Clear build cache & deploy”).
 
@@ -175,9 +197,52 @@ API (`user-registration-api`):
 
 - `NODE_ENV=production`
 - `PORT` (provided by host, default 3000 locally)
-- `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
+- `DATABASE_URL` (preferred in production) or `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE`
 - `FRONTEND_URL` (CORS allowed origin)
+- or `FRONTEND_URLS` (comma‑separated origins)
+
+Health check:
+
+- `GET /health/db` returns database connectivity status (connected/disconnected)
 
 Frontend (`user-registration-frontend`):
 
 - `VITE_API_URL` (points to your API base URL)
+
+---
+
+## Tests (backend)
+
+The backend (`user-registration-api`) includes unit tests and e2e tests using Jest.
+
+Prerequisites:
+
+- PostgreSQL running (you can use the provided Docker Compose)
+- A separate test database (the app doesn’t create databases, only tables)
+
+Create the test database once:
+
+```powershell
+# Create user_registration_test database
+psql "postgresql://postgres:password@localhost:5432/postgres" -c \
+  "CREATE DATABASE user_registration_test;"
+```
+
+Run unit tests:
+
+```powershell
+cd d:/AWAD/IA04/user-registration-api
+npm run test
+```
+
+Run e2e tests:
+
+```powershell
+cd d:/AWAD/IA04/user-registration-api
+npm run test:e2e
+```
+
+Notes:
+
+- Tests set `NODE_ENV=test` automatically and use an isolated config that targets the `user_registration_test` database, with `synchronize: true` and `dropSchema: true` for a clean schema each run.
+- If your Postgres credentials are different, set `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, and `DB_DATABASE=user_registration_test` before running tests.
