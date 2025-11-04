@@ -91,8 +91,6 @@ psql "postgresql://postgres:password@localhost:5432/user_registration" -f \
   ".\sql\02_seed_sample_data.sql"
 ```
 
-On Render (Managed PostgreSQL), open the DB shell and paste script contents, or use the External URL with `psql`.
-
 ## Database Schema
 
 ### User Table
