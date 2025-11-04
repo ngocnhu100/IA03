@@ -49,6 +49,40 @@ export const databaseConfig: TypeOrmModuleOptions = hasDatabaseUrl
       },
     };
 
+// Optional safe startup log to help diagnose connection issues
+try {
+  const shouldLog =
+    !isProd || String(process.env.LOG_DB_CONFIG || "").toLowerCase() === "true";
+  if (shouldLog) {
+    const summary = hasDatabaseUrl
+      ? {
+          using: "DATABASE_URL",
+          urlHost: (() => {
+            try {
+              const u = new URL(process.env.DATABASE_URL as string);
+              return `${u.protocol}//${u.hostname}:${u.port}${u.pathname}`;
+            } catch {
+              return "<invalid URL>";
+            }
+          })(),
+          ssl: isProd ? true : false,
+          synchronize: (databaseConfig as any).synchronize,
+        }
+      : {
+          using: "DISCRETE_ENV",
+          host: process.env.DB_HOST || "localhost",
+          port: process.env.DB_PORT || "5432",
+          db: process.env.DB_DATABASE || "user_registration",
+          ssl: isProd ? true : false,
+          synchronize: (databaseConfig as any).synchronize,
+        };
+    // eslint-disable-next-line no-console
+    console.log("[DB CONFIG]", summary);
+  }
+} catch {
+  // ignore logging issues
+}
+
 export const testDatabaseConfig: TypeOrmModuleOptions = {
   type: "postgres",
   host: process.env.DB_HOST || "localhost",
