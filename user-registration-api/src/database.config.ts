@@ -1,15 +1,27 @@
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { join } from "path";
 
 const isProd = process.env.NODE_ENV === "production";
-const hasDatabaseUrl = !!process.env.DATABASE_URL;
+const rawDatabaseUrl = process.env.DATABASE_URL || "";
+// Sanitize DATABASE_URL: trim, strip surrounding quotes, normalize scheme
+const sanitizedDatabaseUrl = rawDatabaseUrl
+  .trim()
+  .replace(/^['"]|['"]$/g, "")
+  .replace(/^postgresql:\/\//i, "postgres://");
+const hasDatabaseUrl = sanitizedDatabaseUrl.length > 0;
 const syncOverride =
   String(process.env.DB_SYNCHRONIZE || "").toLowerCase() === "true";
+
+// Ensure TypeORM only loads compiled JS in production builds to avoid requiring TS files at runtime
+const entityPattern = __filename.endsWith(".ts")
+  ? join(__dirname, "/../**/*.entity.ts")
+  : join(__dirname, "/../**/*.entity.js");
 
 export const databaseConfig: TypeOrmModuleOptions = hasDatabaseUrl
   ? {
       type: "postgres",
-      url: process.env.DATABASE_URL as string,
-      entities: [__dirname + "/../**/*.entity{.ts,.js}"],
+      url: sanitizedDatabaseUrl as string,
+      entities: [entityPattern],
       synchronize: syncOverride ? true : !isProd,
       logging: !isProd ? process.env.NODE_ENV === "development" : false,
       ssl: isProd ? { rejectUnauthorized: false } : false,
@@ -36,7 +48,7 @@ export const databaseConfig: TypeOrmModuleOptions = hasDatabaseUrl
       username: process.env.DB_USERNAME || "postgres",
       password: process.env.DB_PASSWORD || "password",
       database: process.env.DB_DATABASE || "user_registration",
-      entities: [__dirname + "/../**/*.entity{.ts,.js}"],
+      entities: [entityPattern],
       synchronize: syncOverride ? true : !isProd, // Auto-create tables in development (can be overridden)
       logging: process.env.NODE_ENV === "development",
       ssl: isProd ? { rejectUnauthorized: false } : false,
@@ -59,7 +71,7 @@ try {
           using: "DATABASE_URL",
           urlHost: (() => {
             try {
-              const u = new URL(process.env.DATABASE_URL as string);
+              const u = new URL(sanitizedDatabaseUrl as string);
               return `${u.protocol}//${u.hostname}:${u.port}${u.pathname}`;
             } catch {
               return "<invalid URL>";
@@ -90,7 +102,7 @@ export const testDatabaseConfig: TypeOrmModuleOptions = {
   username: process.env.DB_USERNAME || "postgres",
   password: process.env.DB_PASSWORD || "password",
   database: process.env.DB_DATABASE || "user_registration_test",
-  entities: [__dirname + "/../**/*.entity{.ts,.js}"],
+  entities: [entityPattern],
   synchronize: true, // Always sync for tests
   logging: false, // Disable logging for tests
   dropSchema: true, // Drop schema between tests
