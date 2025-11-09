@@ -102,7 +102,9 @@ export const testDatabaseConfig: TypeOrmModuleOptions = {
   username: process.env.DB_USERNAME || "postgres",
   password: process.env.DB_PASSWORD || "password",
   database: process.env.DB_DATABASE || "user_registration_test",
-  entities: [entityPattern],
+  entities: [
+    __filename.endsWith(".ts") ? "src/**/*.entity.ts" : "dist/**/*.entity.js",
+  ],
   synchronize: true, // Always sync for tests
   logging: false, // Disable logging for tests
   dropSchema: true, // Drop schema between tests
