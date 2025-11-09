@@ -67,36 +67,107 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         message = exceptionResponse.message;
       }
     } else if (exception instanceof QueryFailedError) {
-      // Handle database-specific errors
-      status = HttpStatus.SERVICE_UNAVAILABLE;
-      error = "Database operation failed";
-
+      // Handle database-specific errors with more detailed messages
       const dbError = exception as any;
+
       if (dbError.code === "23505" || dbError.code === "ER_DUP_ENTRY") {
+        // Unique constraint violation
         status = HttpStatus.CONFLICT;
         error = "Duplicate entry";
-        message = "This information already exists in our system.";
+        message =
+          "This email address is already registered. Please use a different email or try logging in instead.";
         field = "email";
+      } else if (dbError.code === "23503") {
+        // Foreign key constraint violation
+        status = HttpStatus.BAD_REQUEST;
+        error = "Invalid reference";
+        message =
+          "The requested operation references invalid or non-existent data.";
+        field = "general";
+      } else if (dbError.code === "23502") {
+        // Not null constraint violation
+        status = HttpStatus.BAD_REQUEST;
+        error = "Missing required data";
+        message =
+          "Some required information is missing. Please check your input and try again.";
+        field = "general";
+      } else if (dbError.code === "42703") {
+        // Undefined column
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        error = "Database schema error";
+        message =
+          "A database configuration issue occurred. Please contact support if this persists.";
+      } else if (dbError.code === "42P01") {
+        // Undefined table
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        error = "Database schema error";
+        message =
+          "A database configuration issue occurred. Please contact support if this persists.";
       } else if (
         dbError.code === "ECONNREFUSED" ||
         dbError.code === "ENOTFOUND"
       ) {
+        // Connection refused or host not found
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        error = "Database connection failed";
         message =
-          "Database connection is currently unavailable. Please try again later.";
+          "Unable to connect to the database. Our team has been notified and is working to resolve this issue.";
+      } else if (dbError.code === "ETIMEDOUT" || dbError.code === "TIMEOUT") {
+        // Connection timeout
+        status = HttpStatus.REQUEST_TIMEOUT;
+        error = "Database timeout";
+        message =
+          "The database operation took too long to complete. Please try again in a few moments.";
+      } else if (dbError.code === "08003" || dbError.code === "08006") {
+        // Connection does not exist or connection failure
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        error = "Database unavailable";
+        message =
+          "The database service is temporarily unavailable. Please try again later.";
+      } else if (dbError.code === "53300") {
+        // Too many connections
+        status = HttpStatus.SERVICE_UNAVAILABLE;
+        error = "Database overloaded";
+        message =
+          "The database is experiencing high load. Please try again in a few minutes.";
       } else {
-        message = "A database error occurred. Please try again later.";
+        // Generic database error
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        error = "Database operation failed";
+        message =
+          "A database error occurred while processing your request. Please try again later.";
       }
     } else if (exception instanceof Error) {
-      // Handle other types of errors
-      if (exception.message.includes("connect ECONNREFUSED")) {
+      // Handle other types of errors with more specific messages
+      const errorMessage = exception.message.toLowerCase();
+
+      if (errorMessage.includes("connect ECONNREFUSED")) {
         status = HttpStatus.SERVICE_UNAVAILABLE;
-        error = "Service unavailable";
+        error = "Connection refused";
         message =
-          "The service is temporarily unavailable. Please try again later.";
-      } else if (exception.message.includes("timeout")) {
+          "Unable to establish a connection. Please check your network and try again.";
+      } else if (errorMessage.includes("timeout")) {
         status = HttpStatus.REQUEST_TIMEOUT;
         error = "Request timeout";
-        message = "The request took too long to process. Please try again.";
+        message = "The operation timed out. Please try again.";
+      } else if (errorMessage.includes("invalid input syntax")) {
+        status = HttpStatus.BAD_REQUEST;
+        error = "Invalid input";
+        message =
+          "The provided data contains invalid characters or format. Please check your input.";
+      } else if (errorMessage.includes("permission denied")) {
+        status = HttpStatus.FORBIDDEN;
+        error = "Permission denied";
+        message = "You don't have permission to perform this action.";
+      } else if (
+        errorMessage.includes("disk full") ||
+        errorMessage.includes("no space left")
+      ) {
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+        error = "Storage full";
+        message = "The server storage is full. Please contact support.";
+      } else {
+        // Keep the generic message for unknown errors
       }
     }
 
@@ -134,12 +205,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       // Get the most appropriate constraint message
       const constraintKeys = Object.keys(error.constraints);
       if (constraintKeys.length > 0) {
-        // Prioritize certain constraints
+        // Prioritize certain constraints for better user experience
         const priorityOrder = [
           "isEmail",
           "isNotEmpty",
           "minLength",
           "maxLength",
+          "isString",
         ];
         for (const priority of priorityOrder) {
           if (constraintKeys.includes(priority)) {

@@ -20,7 +20,7 @@ VITE_API_URL=http://localhost:3000
 
 The register form POSTs to `/user/register` on the configured backend.
 
-**Note:** Login is simulated with no backend authentication. To test the login UI, use `test@example.com` / `password` (hardcoded simulation values).
+**Note:** Login is simulated on the frontend with no backend authentication. The login form will accept any valid email/password combination and simulate a successful login for UI demonstration purposes only.
 
 If you seeded sample data in the backend, the following users exist for reference/testing registration (duplicate email validation):
 

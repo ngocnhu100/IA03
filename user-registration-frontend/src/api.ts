@@ -21,9 +21,15 @@ const api = axios.create({
 });
 
 export type RegisterDto = { email: string; password: string };
+export type LoginDto = { email: string; password: string };
 
 export async function registerUser(data: RegisterDto) {
   const response = await api.post("/user/register", data);
+  return response.data;
+}
+
+export async function loginUser(data: LoginDto) {
+  const response = await api.post("/user/login", data);
   return response.data;
 }
 

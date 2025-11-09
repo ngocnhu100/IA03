@@ -2,6 +2,46 @@
 
 This repo contains a NestJS API and a React (Vite + TS) frontend, plus Dockerized PostgreSQL and pgAdmin.
 
+## Project Overview
+
+This is a complete User Registration System that includes:
+
+- **Backend (NestJS)**: API for user registration with PostgreSQL database, input validation, password hashing, and comprehensive error handling
+- **Frontend (React + Vite)**: Modern UI with form validation, user-friendly error messages, and responsive design
+- **Database**: PostgreSQL with Docker containerization for easy setup
+- **Login**: Frontend-only simulation (no backend authentication required per project specifications)
+
+## Features
+
+✅ **Backend API** (`/user/register` endpoint)
+
+- User registration with email/password validation
+- Secure password hashing with bcrypt
+- Duplicate email prevention
+- Comprehensive error handling and validation
+- Database connectivity health checks
+
+✅ **Frontend UI**
+
+- Registration form with real-time validation
+- Password strength indicator
+- Login form simulation (UI only)
+- Responsive design with Tailwind CSS
+- Accessibility features (ARIA labels, keyboard navigation)
+- Success/error feedback with visual indicators
+
+✅ **Database**
+
+- PostgreSQL with TypeORM integration
+- Automatic schema creation in development
+- Docker containerization for easy setup
+- Optional pgAdmin web interface
+
+✅ **Testing**
+
+- Backend unit tests and e2e tests with Jest
+- Comprehensive test coverage for validation and error scenarios
+
 ## Prerequisites
 
 - Node.js 18+ and npm
@@ -105,7 +145,7 @@ After seeding, these pre-registered users exist in the database for testing purp
 - **alice@example.com** / **Password123!**
 - **bob@example.com** / **Password123!**
 
-**Note:** These users are for reference/testing registration only (e.g., testing duplicate email validation). **Login is simulated** - no real authentication occurs. To test the login UI, use `test@example.com` / `password` (hardcoded simulation values).
+**Note:** These users are for reference/testing registration only (e.g., testing duplicate email validation). **Login is simulated on the frontend** - no real authentication occurs. The login form will accept any valid email/password combination and simulate a successful login for UI demonstration purposes.
 
 ## 2) Run the backend (NestJS)
 
@@ -141,11 +181,26 @@ Frontend runs at: http://localhost:5173
 
 The app expects the API base URL from `VITE_API_URL` (defaults to http://localhost:3000).
 
-## Useful URLs
+## API Endpoints
 
-- Frontend: http://localhost:5173
-- API: http://localhost:3000
-- pgAdmin: http://localhost:5050 (admin@admin.com / admin)
+### POST /user/register
+
+**Purpose**: Register a new user account
+**Used by**: Frontend registration form
+**Features**: Email validation, password hashing, duplicate prevention
+
+### GET /health/db
+
+**Purpose**: Database connectivity check
+**Used by**: Health monitoring and troubleshooting
+
+## How It Works
+
+1. **Registration**: User fills out registration form → Frontend validates → Sends to `/user/register` → Backend validates, hashes password, saves to database → Returns success/error
+
+2. **Login**: User fills out login form → Frontend simulates authentication → Shows success message → Redirects to dashboard (no actual backend authentication)
+
+3. **Database**: PostgreSQL stores user data with secure password hashing
 
 ## Troubleshooting
 

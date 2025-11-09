@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import LoginForm from '@/components/LoginForm';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      navigate('/');
+    }
+  }, [isLoggedIn, navigate]);
+
+  // Don't render anything if user is logged in (will redirect)
+  if (isLoggedIn) {
+    return null;
+  }
+
   return (
     <div className="h-screen bg-gradient-to-br from-green-50 to-teal-100 flex items-center justify-center p-4">
       <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg max-w-md w-full fade-in">

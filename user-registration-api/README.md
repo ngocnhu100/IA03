@@ -220,7 +220,7 @@ Notes:
 
 ### Manual API checks (PowerShell)
 
-**Note:** This API only provides user registration. Login/authentication is not implemented - the frontend simulates login for UI demonstration purposes.
+**Note:** This API provides user registration functionality. Login is simulated on the frontend for UI demonstration purposes.
 
 If you seeded sample data, the following users exist for testing registration (e.g., duplicate email validation):
 

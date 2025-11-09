@@ -4,12 +4,14 @@ import {
   InternalServerErrorException,
   BadRequestException,
   ServiceUnavailableException,
+  UnauthorizedException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, QueryFailedError } from "typeorm";
 import * as bcrypt from "bcrypt";
 import { UserEntity } from "./user.entity";
 import { RegisterUserDto } from "./register-user.dto";
+import { LoginUserDto } from "./login-user.dto";
 
 export interface User {
   id: string;
@@ -187,6 +189,111 @@ export class UserService {
         error: "Database query failed",
         message:
           "Unable to search for user information. Please try again later.",
+        field: "general",
+      });
+    }
+  }
+
+  async login(loginUserDto: LoginUserDto): Promise<User> {
+    try {
+      const { email, password } = loginUserDto;
+
+      // Validate input data
+      if (!email || typeof email !== "string") {
+        throw new BadRequestException({
+          error: "Invalid email",
+          message: "Email address is required and must be a valid string.",
+          field: "email",
+        });
+      }
+
+      if (!password || typeof password !== "string") {
+        throw new BadRequestException({
+          error: "Invalid password",
+          message: "Password is required and must be a valid string.",
+          field: "password",
+        });
+      }
+
+      // Normalize email to lowercase for consistency
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Validate email format after normalization
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(normalizedEmail)) {
+        throw new BadRequestException({
+          error: "Invalid email format",
+          message:
+            "Please provide a valid email address (e.g., user@example.com).",
+          field: "email",
+        });
+      }
+
+      // Find user by email
+      let user: UserEntity | null;
+      try {
+        user = await this.userRepository.findOne({
+          where: { email: normalizedEmail },
+        });
+      } catch (error) {
+        throw new ServiceUnavailableException({
+          error: "Database connection error",
+          message: "Unable to verify credentials. Please try again later.",
+          field: "general",
+        });
+      }
+
+      if (!user) {
+        throw new UnauthorizedException({
+          error: "Invalid credentials",
+          message:
+            "The email address or password you entered is incorrect. Please check your credentials and try again.",
+          field: "general",
+        });
+      }
+
+      // Verify password
+      let isPasswordValid: boolean;
+      try {
+        isPasswordValid = await bcrypt.compare(password, user.password);
+      } catch (error) {
+        throw new InternalServerErrorException({
+          error: "Password verification failed",
+          message: "Unable to verify your password. Please try again.",
+          field: "password",
+        });
+      }
+
+      if (!isPasswordValid) {
+        throw new UnauthorizedException({
+          error: "Invalid credentials",
+          message:
+            "The email address or password you entered is incorrect. Please check your credentials and try again.",
+          field: "general",
+        });
+      }
+
+      // Return user without password for security
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword as User;
+    } catch (error) {
+      // Re-throw known exceptions
+      if (
+        error instanceof ConflictException ||
+        error instanceof InternalServerErrorException ||
+        error instanceof BadRequestException ||
+        error instanceof ServiceUnavailableException ||
+        error instanceof UnauthorizedException
+      ) {
+        throw error;
+      }
+
+      // Handle unexpected errors
+      console.error("Unexpected error during user login:", error);
+      throw new InternalServerErrorException({
+        error: "Login failed",
+        message:
+          "An unexpected error occurred during login. Please try again later.",
         field: "general",
       });
     }
