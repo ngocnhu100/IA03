@@ -67,7 +67,7 @@ If your provider gives `postgresql://...`, change it to `postgres://...`.
 ### Install Dependencies & Run
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 npm install
 npm run start:dev
 # Server runs on http://localhost:3000/
@@ -200,14 +200,14 @@ psql "postgresql://postgres:password@localhost:5432/postgres" -c \
 Run unit tests:
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 npm run test
 ```
 
 Run e2e tests (ensure NODE_ENV=test so the test DB config is used):
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 $env:NODE_ENV = "test"
 npm run test:e2e
 # (optional) clear env when done: Remove-Item Env:NODE_ENV
@@ -220,6 +220,15 @@ Notes:
 
 ### Manual API checks (PowerShell)
 
+**Note:** This API only provides user registration. Login/authentication is not implemented - the frontend simulates login for UI demonstration purposes.
+
+If you seeded sample data, the following users exist for testing registration (e.g., duplicate email validation):
+
+- alice@example.com / Password123!
+- bob@example.com / Password123!
+
+Otherwise, register a user first, then test registration validation.
+
 ```powershell
 # Test successful registration
 Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"password123"}'
@@ -227,6 +236,6 @@ Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -Content
 # Test validation errors
 Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -ContentType "application/json" -Body '{"email":"invalid","password":"short"}'
 
-# Test duplicate email
-Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -ContentType "application/json" -Body '{"email":"test@example.com","password":"different123"}'
+# Test duplicate email (using seeded alice@example.com)
+Invoke-WebRequest -Uri http://localhost:3000/user/register -Method POST -ContentType "application/json" -Body '{"email":"alice@example.com","password":"different123"}'
 ```

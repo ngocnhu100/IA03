@@ -5,12 +5,17 @@ This repo contains a NestJS API and a React (Vite + TS) frontend, plus Dockerize
 ## Prerequisites
 
 - Node.js 18+ and npm
-- Docker Desktop (for PostgreSQL + pgAdmin)
+- **Option 1 (Recommended):** Docker Desktop (for PostgreSQL + pgAdmin) - No local PostgreSQL installation needed
+- **Option 2:** PostgreSQL installed locally + Docker Desktop (for pgAdmin only) - Requires local psql installation
+
+**Note:** PostgreSQL client tools like `psql` are not required with Option 1 - all database operations use Docker commands
 
 ## 1) Start the database (PostgreSQL + pgAdmin)
 
+### Option 1: Docker (Recommended)
+
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 # Start containers
 docker-compose up -d
 
@@ -21,11 +26,35 @@ docker ps
 - PostgreSQL: localhost:5432 (user: `postgres`, password: `password`, db: `user_registration`)
 - pgAdmin: http://localhost:5050 (email: `admin@admin.com`, password: `admin`)
 
-In pgAdmin, create a new Server:
+### Option 2: Local PostgreSQL Installation
+
+1. **Install PostgreSQL locally:**
+
+   - Download from: https://www.postgresql.org/download/windows/
+   - During installation, set password to `password` for user `postgres`
+
+2. **Create the database:**
+
+   ```powershell
+   # Connect to PostgreSQL and create database
+   psql -U postgres -c "CREATE DATABASE user_registration;"
+   ```
+
+3. **Start pgAdmin (optional):**
+   ```powershell
+   cd user-registration-api
+   # Start only pgAdmin container
+   docker-compose up -d pgadmin
+   ```
+   - pgAdmin: http://localhost:5050 (email: `admin@admin.com`, password: `admin`)
+
+**For pgAdmin connection (both options):**
+
+Create a new Server:
 
 - Name: User Registration DB (any)
 - Connection
-  - Host: `postgres` (docker compose service name)
+  - Host: `localhost` (or `postgres` for Docker option)
   - Port: `5432`
   - Username: `postgres`
   - Password: `password`
@@ -34,27 +63,54 @@ In pgAdmin, create a new Server:
 
 We included SQL files to create the `users` table and seed a few example users.
 
-PowerShell (Windows) with local Docker Postgres running:
+#### Option 1: Using Docker (Recommended)
+
+**Note:** These commands use Docker to execute SQL files inside the PostgreSQL container.
 
 ```powershell
+cd user-registration-api
+
 # Create schema (users table, unique index)
-psql "postgresql://postgres:password@localhost:5432/user_registration" -f \
-  ".\user-registration-api\sql\01_create_schema.sql"
+docker cp sql\01_create_schema.sql user-registration-db:/tmp/01_create_schema.sql
+docker-compose exec postgres psql -U postgres -d user_registration -f /tmp/01_create_schema.sql
 
 # Seed sample users (alice@example.com / Password123!, bob@example.com / Password123!)
-psql "postgresql://postgres:password@localhost:5432/user_registration" -f \
-  ".\user-registration-api\sql\02_seed_sample_data.sql"
+docker cp sql\02_seed_sample_data.sql user-registration-db:/tmp/02_seed_sample_data.sql
+docker-compose exec postgres psql -U postgres -d user_registration -f /tmp/02_seed_sample_data.sql
+```
+
+#### Option 2: Using Local psql
+
+**Note:** Requires PostgreSQL installed locally with `psql` in PATH.
+
+```powershell
+cd user-registration-api
+
+# Create schema (users table, unique index)
+psql "postgresql://postgres:password@localhost:5432/user_registration" -f sql\01_create_schema.sql
+
+# Seed sample users (alice@example.com / Password123!, bob@example.com / Password123!)
+psql "postgresql://postgres:password@localhost:5432/user_registration" -f sql\02_seed_sample_data.sql
 ```
 
 Notes:
 
-- Scripts are idempotent (safe to run multiple times).\
+- Scripts are idempotent (safe to run multiple times).
 - Passwords are hashed server‑side using `crypt(..., gen_salt('bf'))` (bcrypt‑compatible).
+
+## Sample Users
+
+After seeding, these pre-registered users exist in the database for testing purposes:
+
+- **alice@example.com** / **Password123!**
+- **bob@example.com** / **Password123!**
+
+**Note:** These users are for reference/testing registration only (e.g., testing duplicate email validation). **Login is simulated** - no real authentication occurs. To test the login UI, use `test@example.com` / `password` (hardcoded simulation values).
 
 ## 2) Run the backend (NestJS)
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 npm install
 npm run start:dev
 ```
@@ -74,7 +130,7 @@ DB_DATABASE=user_registration
 ## 3) Run the frontend (React + Vite)
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-frontend
+cd user-registration-frontend
 # (optional) create .env if not present
 # echo VITE_API_URL=http://localhost:3000 > .env
 npm install
@@ -83,7 +139,7 @@ npm run dev
 
 Frontend runs at: http://localhost:5173
 
-The app expects the API base URL from `VITE_API_URL` (defaults to http://localhost:3000 if you set it in `.env`).
+The app expects the API base URL from `VITE_API_URL` (defaults to http://localhost:3000).
 
 ## Useful URLs
 
@@ -125,28 +181,37 @@ The backend (`user-registration-api`) includes unit tests and e2e tests using Je
 
 Prerequisites:
 
-- PostgreSQL running (you can use the provided Docker Compose)
-- A separate test database (the app doesn’t create databases, only tables)
+- PostgreSQL running (use Option 1 or Option 2 from Step 1 above)
+- A separate test database (the app doesn't create databases, only tables)
 
 Create the test database once:
 
+#### Option 1: Using Docker
+
 ```powershell
 # Create user_registration_test database
-psql "postgresql://postgres:password@localhost:5432/postgres" -c \
-  "CREATE DATABASE user_registration_test;"
+cd user-registration-api
+docker-compose exec postgres psql -U postgres -d postgres -c "CREATE DATABASE user_registration_test;"
+```
+
+#### Option 2: Using Local psql
+
+```powershell
+# Create user_registration_test database
+psql "postgresql://postgres:password@localhost:5432/postgres" -c "CREATE DATABASE user_registration_test;"
 ```
 
 Run unit tests:
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 npm run test
 ```
 
 Run e2e tests:
 
 ```powershell
-cd d:/AWAD/IA04/user-registration-api
+cd user-registration-api
 npm run test:e2e
 ```
 
